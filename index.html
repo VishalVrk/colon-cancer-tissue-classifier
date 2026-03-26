@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Colorectal Cancer Tissue Classification & Staging</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-slate-900 text-white">
+    <div class="max-w-4xl mx-auto px-6 py-5 flex items-center gap-4">
+      <div class="bg-rose-500 p-2.5 rounded-xl">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight">Colorectal Cancer Tissue Classification & Staging</h1>
+        <p class="text-slate-400 text-sm">AI-powered histopathological analysis · For educational use only</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-6 py-10 space-y-6">
+
+    <!-- Step 1: Upload -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-7 py-5 border-b border-slate-100 flex items-center gap-3">
+        <span class="bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1 rounded-full">STEP 1</span>
+        <h2 class="font-semibold text-slate-800">Upload Histopathological Image</h2>
+      </div>
+      <div class="px-7 py-7">
+        <div id="dropZone"
+          class="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center cursor-pointer
+                 hover:border-rose-400 hover:bg-rose-50 transition-all duration-200"
+          onclick="document.getElementById('fileInput').click()"
+          ondragover="event.preventDefault()"
+          ondrop="handleDrop(event)">
+          <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="handleFile(event)" />
+          <div id="uploadPrompt">
+            <svg class="mx-auto w-10 h-10 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14
+                   m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <p class="text-slate-500 font-medium">Drop image here or <span class="text-rose-500">click to browse</span></p>
+            <p class="text-slate-400 text-sm mt-1">H&amp;E stained colon tissue patch · JPG or PNG</p>
+          </div>
+          <div id="imagePreview" class="hidden">
+            <img id="previewImg" class="mx-auto max-h-52 rounded-lg shadow object-contain" src="" alt="Preview"/>
+            <p id="fileName" class="text-slate-400 text-sm mt-3"></p>
+          </div>
+        </div>
+
+        <button id="analyzeBtn" onclick="analyzeImage()" disabled
+          class="mt-5 w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed
+                 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+          <svg id="spinIcon" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+          <span id="btnText">Analyze Image</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Detection Result -->
+    <div id="resultCard" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-7 py-5 border-b border-slate-100 flex items-center gap-3">
+        <span class="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">RESULT</span>
+        <h2 class="font-semibold text-slate-800">Tissue Classification Result</h2>
+      </div>
+      <div class="px-7 py-7 space-y-5">
+
+        <!-- Top prediction banner -->
+        <div id="resultBanner" class="flex items-start gap-4 p-5 rounded-xl border"></div>
+
+        <!-- All class scores -->
+        <div>
+          <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">All Class Scores</p>
+          <div id="scoreGrid" class="space-y-2"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Step 2: TNM Staging (only shown when TUM detected) -->
+    <div id="stagingCard" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-7 py-5 border-b border-slate-100 flex items-center gap-3">
+        <span class="bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1 rounded-full">STEP 2</span>
+        <h2 class="font-semibold text-slate-800">TNM Staging</h2>
+        <span class="text-slate-400 text-sm">— Based on clinical examination, CT/MRI &amp; colonoscopy</span>
+      </div>
+      <div class="px-7 py-7 space-y-6">
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">T — Tumor Invasion</label>
+            <select id="tSelect" class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700
+                                        focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white">
+              <option value="T1">T1 — Submucosa</option>
+              <option value="T2">T2 — Muscularis propria</option>
+              <option value="T3" selected>T3 — Pericolorectal tissue</option>
+              <option value="T4a">T4a — Visceral peritoneum</option>
+              <option value="T4b">T4b — Adjacent organs</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">N — Lymph Nodes</label>
+            <select id="nSelect" class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700
+                                        focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white">
+              <option value="N0" selected>N0 — No nodal metastasis</option>
+              <option value="N1">N1 — 1–3 regional nodes</option>
+              <option value="N2">N2 — 4+ regional nodes</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">M — Distant Metastasis</label>
+            <select id="mSelect" class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700
+                                        focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white">
+              <option value="M0" selected>M0 — No distant metastasis</option>
+              <option value="M1a">M1a — Single distant organ</option>
+              <option value="M1b">M1b — Multiple distant organs</option>
+              <option value="M1c">M1c — Peritoneal metastasis</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="computeStage()"
+          class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 rounded-xl
+                 transition-colors flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2
+                 a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          Compute Stage
+        </button>
+
+        <!-- Stage Result -->
+        <div id="stageResult" class="hidden rounded-xl border-2 p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">AJCC Classification</p>
+              <p id="stageName" class="text-3xl font-black"></p>
+              <p id="stageTNM" class="text-slate-400 text-sm mt-1"></p>
+            </div>
+            <div id="stageBadge"
+              class="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-black text-base shadow-lg">
+            </div>
+          </div>
+          <p id="stageDesc" class="mt-5 text-slate-600 text-sm leading-relaxed pt-5 border-t border-slate-100"></p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Collapsible Tissue Type Reference -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <button onclick="toggleTable()"
+        class="w-full px-7 py-5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors">
+        <div class="flex items-center gap-3">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 10h18M3 14h18M10 6h4M10 18h4"/>
+          </svg>
+          <span class="font-semibold text-slate-700 text-sm">CRC Tissue Type Reference</span>
+        </div>
+        <svg id="chevron" class="w-4 h-4 text-slate-400 transition-transform duration-200"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+      <div id="refTable" class="hidden border-t border-slate-100">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="text-left py-3 px-6 font-semibold text-slate-500 text-xs uppercase tracking-wider">Code</th>
+                <th class="text-left py-3 px-6 font-semibold text-slate-500 text-xs uppercase tracking-wider">Tissue Type</th>
+                <th class="text-left py-3 px-6 font-semibold text-slate-500 text-xs uppercase tracking-wider">Significance</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+              <tr class="hover:bg-slate-50/50"><td class="py-3 px-6 font-bold text-red-600">TUM</td><td class="py-3 px-6 text-slate-700">Colorectal adenocarcinoma</td><td class="py-3 px-6 text-slate-400">Malignant tumor tissue — primary diagnostic target</td></tr>
+              <tr class="hover:bg-slate-50/50"><td class="py-3 px-6 font-bold text-green-600">NORM</td><td class="py-3 px-6 text-slate-700">Normal colon mucosa</td><td class="py-3 px-6 text-slate-400">Healthy epithelial lining, no malignancy</td></tr>
+              <tr class="hover:bg-slate-50/50"><td class="py-3 px-6 font-bold text-yellow-600">STR</td><td class="py-3 px-6 text-slate-700">Cancer-associated stroma</td><td class="py-3 px-6 text-slate-400">Connective tissue surrounding tumor — indicator of invasion</td></tr>
+              <tr class="hover:bg-slate-50/50"><td class="py-3 px-6 font-bold text-blue-500">LYM</td><td class="py-3 px-6 text-slate-700">Lymphocytes</td><td class="py-3 px-6 text-slate-400">Immune response — higher density may indicate better prognosis</td></tr>
+              <tr class="hover:bg-slate-50/50"><td class="py-3 px-6 font-bold text-slate-500">MUS</td><td class="py-3 px-6 text-slate-700">Smooth muscle</td><td class="py-3 px-6 text-slate-400">Muscularis propria layer of colon wall</td></tr>
+              <tr class="hover:bg-slate-50/50"><td class="py-3 px-6 font-bold text-slate-500">MUC</td><td class="py-3 px-6 text-slate-700">Mucus</td><td class="py-3 px-6 text-slate-400">Secreted mucin — present in mucinous adenocarcinoma subtypes</td></tr>
+              <tr class="hover:bg-slate-50/50"><td class="py-3 px-6 font-bold text-orange-400">ADI</td><td class="py-3 px-6 text-slate-700">Adipose tissue</td><td class="py-3 px-6 text-slate-400">Fat tissue in pericolorectal area</td></tr>
+              <tr class="hover:bg-slate-50/50"><td class="py-3 px-6 font-bold text-slate-400">DEB</td><td class="py-3 px-6 text-slate-700">Debris</td><td class="py-3 px-6 text-slate-400">Necrotic/cellular debris — non-diagnostic region</td></tr>
+              <tr class="hover:bg-slate-50/50"><td class="py-3 px-6 font-bold text-slate-300">BACK</td><td class="py-3 px-6 text-slate-700">Background / glass</td><td class="py-3 px-6 text-slate-400">Empty slide area — no tissue present</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="text-center py-8 text-slate-400 text-xs border-t border-slate-100 mt-4">
+    For educational purposes only &mdash; not for clinical diagnosis &mdash;
+    Model: ResNet-50 trained on NCT-CRC-HE-45K &mdash;
+    Dataset: <a href="https://huggingface.co/datasets/owkin/nct-crc-he" class="underline hover:text-slate-600">owkin/nct-crc-he</a>
+  </footer>
+
+  <script type="module">
+    // ── Config: replace with your HF Space ID after deploying ────────────────
+    const HF_SPACE = "vrkforever/colon-cancer-tissue";
+
+    let selectedFile = null;
+    let hfClient = null;
+
+    // Lazy-init Gradio client
+    async function getClient() {
+      if (!hfClient) {
+        const { Client } = await import("https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js");
+        hfClient = await Client.connect(HF_SPACE);
+      }
+      return hfClient;
+    }
+
+    // ── File handling ─────────────────────────────────────────────────────────
+    window.handleDrop = function(e) {
+      e.preventDefault();
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith("image/")) loadPreview(f);
+    };
+
+    window.handleFile = function(e) {
+      const f = e.target.files[0];
+      if (f) loadPreview(f);
+    };
+
+    function loadPreview(file) {
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById("previewImg").src = e.target.result;
+        document.getElementById("fileName").textContent = file.name;
+        document.getElementById("uploadPrompt").classList.add("hidden");
+        document.getElementById("imagePreview").classList.remove("hidden");
+        document.getElementById("analyzeBtn").disabled = false;
+        document.getElementById("resultCard").classList.add("hidden");
+        document.getElementById("stagingCard").classList.add("hidden");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ── Analysis ──────────────────────────────────────────────────────────────
+    window.analyzeImage = async function() {
+      if (!selectedFile) return;
+      setLoading(true);
+
+      try {
+        const client = await getClient();
+        const result = await client.predict("/predict", { image: selectedFile });
+        const data = result.data[0];
+        renderResult(data);
+      } catch (err) {
+        alert("Error calling the HF Space: " + err.message +
+              "\n\nMake sure the HF Space is deployed and HF_SPACE is updated in index.html.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    function setLoading(on) {
+      document.getElementById("analyzeBtn").disabled = on;
+      document.getElementById("spinIcon").classList.toggle("hidden", !on);
+      document.getElementById("btnText").textContent = on ? "Analyzing…" : "Analyze Image";
+    }
+
+    // ── Render result ─────────────────────────────────────────────────────────
+    const LABEL_COLORS = {
+      TUM:  { bg: "bg-red-50",    border: "border-red-200",   icon: "text-red-600",   bar: "bg-red-500",   text: "text-red-800"   },
+      NORM: { bg: "bg-green-50",  border: "border-green-200", icon: "text-green-600", bar: "bg-green-500", text: "text-green-800" },
+      BACK: { bg: "bg-slate-50",  border: "border-slate-200", icon: "text-slate-400", bar: "bg-slate-400", text: "text-slate-600" },
+    };
+    const DEFAULT_COLOR = { bg: "bg-blue-50", border: "border-blue-200", icon: "text-blue-600", bar: "bg-blue-400", text: "text-blue-800" };
+
+    function renderResult(data) {
+      const c = LABEL_COLORS[data.label] || DEFAULT_COLOR;
+      const isCancer = data.is_cancer;
+
+      // Banner
+      const banner = document.getElementById("resultBanner");
+      banner.className = `flex items-start gap-4 p-5 rounded-xl border ${c.bg} ${c.border}`;
+      banner.innerHTML = `
+        <div class="rounded-full p-2 shrink-0 ${c.bg}">
+          <svg class="w-5 h-5 ${c.icon}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            ${isCancer
+              ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>'
+              : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>'}
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="font-bold ${c.text} text-base">${data.label} — ${data.description}</p>
+          <p class="${c.icon} text-sm mt-1">${isCancer ? "Tumor tissue detected. Enter clinical TNM values below." : "Non-tumor tissue identified in this patch."}</p>
+          <div class="mt-4 flex items-center gap-3">
+            <span class="text-sm text-slate-500 shrink-0">Confidence</span>
+            <div class="flex-1 bg-slate-100 rounded-full h-2">
+              <div class="${c.bar} h-2 rounded-full transition-all duration-700" style="width:0%" id="topBar"></div>
+            </div>
+            <span class="font-bold text-sm w-12 text-right ${c.text}">${data.confidence}%</span>
+          </div>
+        </div>`;
+
+      document.getElementById("resultCard").classList.remove("hidden");
+      setTimeout(() => { const b = document.getElementById("topBar"); if (b) b.style.width = data.confidence + "%"; }, 100);
+
+      // Score grid
+      const grid = document.getElementById("scoreGrid");
+      grid.innerHTML = (data.scores || [])
+        .sort((a, b) => b.score - a.score)
+        .map(s => {
+          const sc = LABEL_COLORS[s.label] || DEFAULT_COLOR;
+          return `
+            <div class="flex items-center gap-3">
+              <span class="w-10 text-xs font-bold ${sc.text} shrink-0">${s.label}</span>
+              <div class="flex-1 bg-slate-100 rounded-full h-1.5">
+                <div class="${sc.bar} h-1.5 rounded-full" style="width:${s.score}%"></div>
+              </div>
+              <span class="text-xs text-slate-400 w-10 text-right">${s.score}%</span>
+            </div>`;
+        }).join("");
+
+      // Show/hide staging
+      document.getElementById("stagingCard").classList.toggle("hidden", !isCancer);
+      document.getElementById("stageResult").classList.add("hidden");
+    }
+
+    // ── TNM Staging (pure JS, no backend) ────────────────────────────────────
+    window.computeStage = function() {
+      const t = document.getElementById("tSelect").value;
+      const n = document.getElementById("nSelect").value;
+      const m = document.getElementById("mSelect").value;
+
+      let stage, desc, color;
+
+      if (m !== "M0") {
+        stage = "Stage IV";
+        desc  = m === "M1c"
+          ? "Peritoneal metastasis present. Any T, Any N, M1c."
+          : m === "M1b"
+          ? "Multiple distant organ metastases. Any T, Any N, M1b."
+          : "Single distant organ metastasis. Any T, Any N, M1a.";
+        color = "red";
+      } else if (n === "N2") {
+        stage = "Stage III";
+        desc  = "4+ regional lymph nodes involved (N2). Any T, N2, M0.";
+        color = "orange";
+      } else if (n === "N1") {
+        stage = "Stage III";
+        desc  = "1–3 regional lymph nodes involved (N1). Any T, N1, M0.";
+        color = "orange";
+      } else if (t === "T4b") {
+        stage = "Stage II";
+        desc  = "Tumor invades adjacent organs (T4b). N0, M0.";
+        color = "yellow";
+      } else if (t === "T4a") {
+        stage = "Stage II";
+        desc  = "Tumor penetrates visceral peritoneum (T4a). N0, M0.";
+        color = "yellow";
+      } else if (t === "T3") {
+        stage = "Stage II";
+        desc  = "Tumor through muscularis propria into pericolorectal tissues (T3). N0, M0.";
+        color = "yellow";
+      } else {
+        stage = "Stage I";
+        desc  = t === "T2"
+          ? "Tumor invades muscularis propria (T2). N0, M0."
+          : "Tumor invades submucosa (T1). N0, M0.";
+        color = "green";
+      }
+
+      const colors = {
+        green:  { bg: "bg-green-50",  border: "border-green-200",  text: "text-green-800",  badge: "bg-green-500"  },
+        yellow: { bg: "bg-yellow-50", border: "border-yellow-200", text: "text-yellow-800", badge: "bg-yellow-400" },
+        orange: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-800", badge: "bg-orange-500" },
+        red:    { bg: "bg-red-50",    border: "border-red-200",    text: "text-red-800",    badge: "bg-red-600"    },
+      };
+      const c = colors[color];
+      const el = document.getElementById("stageResult");
+
+      el.className = `rounded-xl border-2 p-6 ${c.bg} ${c.border}`;
+      document.getElementById("stageName").className = `text-3xl font-black ${c.text}`;
+      document.getElementById("stageName").textContent = stage;
+      document.getElementById("stageTNM").textContent = `TNM: ${t}, ${n}, ${m}`;
+      document.getElementById("stageDesc").textContent = desc;
+      const badge = document.getElementById("stageBadge");
+      badge.className = `w-16 h-16 rounded-2xl flex items-center justify-center text-white font-black text-sm shadow-lg ${c.badge}`;
+      badge.textContent = stage.replace("Stage ", "");
+      el.classList.remove("hidden");
+    };
+
+    // ── Reference table toggle ────────────────────────────────────────────────
+    window.toggleTable = function() {
+      const t  = document.getElementById("refTable");
+      const ch = document.getElementById("chevron");
+      t.classList.toggle("hidden");
+      ch.style.transform = t.classList.contains("hidden") ? "" : "rotate(180deg)";
+    };
+  </script>
+
+</body>
+</html>
